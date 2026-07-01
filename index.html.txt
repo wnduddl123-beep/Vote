@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>조별 투표 시스템</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f1a;
+    --surface: #161929;
+    --surface2: #1e2236;
+    --surface3: #252942;
+    --accent: #4f7cff;
+    --accent2: #7c3aed;
+    --accent-glow: rgba(79,124,255,0.25);
+    --gold: #f5a623;
+    --silver: #9eb3cc;
+    --bronze: #cd7f32;
+    --text: #eef0fa;
+    --text2: #b0b8d8;
+    --muted: #5a6278;
+    --border: #252942;
+    --border2: #2f3558;
+    --green: #22c55e;
+    --green-bg: rgba(34,197,94,0.1);
+    --red: #ef4444;
+    --red-bg: rgba(239,68,68,0.1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  /* ── 공통 화면 ── */
+  .screen { display: none; min-height: 100vh; min-height: 100dvh; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* ── 배경 그라디언트 장식 ── */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -200px; left: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(79,124,255,0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -200px; right: -200px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── 로딩 ── */
+  #screen-loading {
+    align-items: center; justify-content: center; gap: 20px;
+    background: var(--bg);
+  }
+  .loader-wrap { text-align: center; }
+  .spinner {
+    width: 52px; height: 52px;
+    border: 3px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .9s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loader-wrap p { color: var(--muted); font-size: 14px; }
+
+  /* ── 헤더 ── */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13,15,26,0.9);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  header h1 {
+    font-size: 17px; font-weight: 700; letter-spacing: -0.3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .badge {
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 20px; padding: 5px 14px;
+    font-size: 12px; color: var(--text2); white-space: nowrap;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .badge strong { color: var(--accent); font-weight: 700; }
+
+  /* ── 홈 화면 ── */
+  #screen-home {
+    position: relative; z-index: 1;
+    align-items: center; justify-content: flex-start;
+    padding: 40px 20px 60px; gap: 36px;
+    min-height: 100dvh;
+  }
+  .home-hero { text-align: center; padding-top: 8px; }
+  .home-icon {
+    width: 88px; height: 88px;
+    background: linear-gradient(135deg, var(--surface2), var(--surface3));
+    border: 1px solid var(--border2);
+    border-radius: 28px; margin: 0 auto 20px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 44px;
+    box-shadow: 0 8px 32px rgba(79,124,255,0.15);
+  }
+  .home-hero h2 {
+    font-size: 30px; font-weight: 900; letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #fff 30%, var(--accent));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+  .home-hero p { color: var(--text2); font-size: 14px; line-height: 1.5; }
+  .home-hero .sub-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 20px; padding: 6px 14px;
+    font-size: 12px; color: var(--text2);
+    margin-top: 14px;
+  }
+  .home-hero .sub-badge::before { content: '📋'; }
+
+  .select-section { width: 100%; max-width: 500px; }
+  .select-section > p {
+    text-align: center; color: var(--text2); font-size: 13px;
+    margin-bottom: 14px;
+  }
+  .select-section > p strong { color: var(--text); }
+  .team-select-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  }
+  .team-btn {
+    background: var(--surface);
+    border: 1.5px solid var(--border2);
+    border-radius: 16px; padding: 16px 6px;
+    cursor: pointer; transition: all .18s ease;
+    text-align: center; color: var(--text);
+    font-family: inherit;
+    position: relative; overflow: hidden;
+  }
+  .team-btn::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    opacity: 0; transition: opacity .18s;
+    border-radius: inherit;
+  }
+  .team-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px var(--accent-glow);
+  }
+  .team-btn:hover:not(:disabled)::before { opacity: 0.08; }
+  .team-btn:active:not(:disabled) { transform: translateY(0); }
+  .team-btn.voted {
+    border-color: var(--green); background: var(--green-bg);
+    cursor: not-allowed; opacity: 0.65;
+  }
+  .team-btn:disabled { cursor: not-allowed; }
+  .team-btn .num {
+    font-size: 20px; font-weight: 900; color: var(--accent);
+    display: block; position: relative; z-index: 1;
+  }
+  .team-btn.voted .num { color: var(--green); }
+  .team-btn .label {
+    font-size: 11px; color: var(--muted);
+    margin-top: 5px; display: block;
+    position: relative; z-index: 1;
+  }
+  .team-btn.voted .label { color: var(--green); }
+
+  .admin-link {
+    background: none; border: 1px solid var(--border2);
+    border-radius: 10px; color: var(--muted);
+    font-family: inherit; font-size: 13px;
+    padding: 10px 22px; cursor: pointer;
+    transition: all .2s;
+  }
+  .admin-link:hover {
+    color: var(--gold); border-color: var(--gold);
+    background: rgba(245,166,35,0.06);
+  }
+
+  /* ── 투표 화면 ── */
+  #screen-vote { background: var(--bg); position: relative; z-index: 1; }
+  .vote-body {
+    flex: 1; padding: 20px 20px 40px;
+    display: flex; flex-direction: column; gap: 16px;
+    max-width: 600px; width: 100%; margin: 0 auto;
+  }
+  .vote-info-card {
+    background: linear-gradient(135deg, rgba(79,124,255,0.1), rgba(124,58,237,0.08));
+    border: 1px solid rgba(79,124,255,0.25);
+    border-radius: 14px; padding: 14px 16px;
+    font-size: 13px; color: var(--text2); line-height: 1.7;
+  }
+  .vote-info-card strong { color: var(--text); }
+  .vote-info-card .highlight { color: var(--accent); font-weight: 700; font-size: 15px; }
+
+  .section-title {
+    font-size: 12px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.8px;
+    margin-bottom: 2px;
+  }
+  .vote-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .vote-card {
+    background: var(--surface); border: 2px solid var(--border2);
+    border-radius: 16px; padding: 20px 14px;
+    cursor: pointer; transition: all .18s ease;
+    text-align: center; position: relative; user-select: none;
+    overflow: hidden;
+  }
+  .vote-card::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    opacity: 0; transition: opacity .18s;
+  }
+  .vote-card:not(.disabled):not(.my-team):hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px var(--accent-glow);
+  }
+  .vote-card:not(.disabled):not(.my-team):hover::after { opacity: 0.06; }
+  .vote-card.selected {
+    border-color: var(--accent);
+    background: rgba(79,124,255,0.12);
+    box-shadow: 0 0 0 1px rgba(79,124,255,0.3), 0 4px 16px var(--accent-glow);
+  }
+  .vote-card.selected::after { opacity: 0; }
+  .check-icon {
+    position: absolute; top: 8px; right: 10px;
+    width: 22px; height: 22px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: none; align-items: center; justify-content: center;
+    font-size: 12px; color: #fff; font-weight: 900;
+    z-index: 2;
+  }
+  .vote-card.selected .check-icon { display: flex; }
+  .vote-card.my-team {
+    border-color: rgba(245,166,35,0.3);
+    background: rgba(245,166,35,0.05);
+    cursor: default;
+  }
+  .vote-card.disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+  .vote-card .v-num {
+    font-size: 28px; font-weight: 900; color: var(--accent);
+    position: relative; z-index: 1;
+  }
+  .vote-card.my-team .v-num { color: var(--gold); }
+  .vote-card .v-label {
+    font-size: 12px; color: var(--muted);
+    margin-top: 5px; position: relative; z-index: 1;
+  }
+  .vote-card.my-team .v-label { color: rgba(245,166,35,0.7); }
+  .vote-card.selected .v-label { color: var(--accent); }
+
+  .counter-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 12px; padding: 14px 18px;
+  }
+  .counter-label { font-size: 13px; color: var(--muted); }
+  .counter-dots { display: flex; gap: 10px; }
+  .dot {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid var(--border2); transition: all .2s;
+    position: relative;
+  }
+  .dot.filled {
+    background: var(--accent); border-color: var(--accent);
+    box-shadow: 0 0 8px rgba(79,124,255,0.5);
+  }
+  .counter-num { font-size: 13px; }
+  .counter-num span { color: var(--accent); font-weight: 700; font-size: 16px; }
+
+  .btn-submit {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; border: none; border-radius: 16px;
+    padding: 18px; width: 100%;
+    font-family: inherit; font-size: 16px; font-weight: 700;
+    cursor: pointer; transition: all .2s;
+    box-shadow: 0 4px 20px var(--accent-glow);
+    letter-spacing: -0.2px;
+  }
+  .btn-submit:hover:not(:disabled) {
+    opacity: 0.92; transform: translateY(-2px);
+    box-shadow: 0 8px 28px var(--accent-glow);
+  }
+  .btn-submit:active:not(:disabled) { transform: translateY(0); }
+  .btn-submit:disabled {
+    opacity: 0.35; cursor: not-allowed;
+    box-shadow: none; transform: none;
+  }
+  .btn-back {
+    background: none; border: 1px solid var(--border2);
+    color: var(--muted); border-radius: 12px;
+    padding: 12px; width: 100%;
+    font-family: inherit; font-size: 14px; cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-back:hover { color: var(--text); border-color: var(--border); }
+
+  /* ── 완료 화면 ── */
+  #screen-done {
+    align-items: center; justify-content: center; gap: 28px;
+    padding: 40px 24px; text-align: center;
+    background: var(--bg); position: relative; z-index: 1;
+  }
+  .done-anim { position: relative; }
+  .done-icon {
+    font-size: 80px; line-height: 1;
+    animation: bounceIn .6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  @keyframes bounceIn {
+    0% { transform: scale(0.3); opacity: 0; }
+    60% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .done-ring {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 120px; height: 120px;
+    border: 2px solid var(--green);
+    border-radius: 50%; opacity: 0;
+    animation: ringOut 1s .4s ease-out forwards;
+  }
+  @keyframes ringOut {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.7; }
+    100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
+  }
+  .done-title { font-size: 26px; font-weight: 900; letter-spacing: -0.5px; }
+  .done-sub { color: var(--text2); font-size: 15px; margin-top: 6px; }
+  .voted-teams-wrap { }
+  .voted-teams-wrap > p { font-size: 12px; color: var(--muted); margin-bottom: 12px; text-align: center; }
+  .voted-teams { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .voted-chip {
+    background: linear-gradient(135deg, rgba(79,124,255,0.15), rgba(124,58,237,0.15));
+    border: 1px solid rgba(79,124,255,0.4);
+    border-radius: 22px; padding: 10px 24px;
+    font-size: 16px; font-weight: 700; color: var(--accent);
+  }
+
+  /* ── 관리자 로그인 ── */
+  #screen-admin-login {
+    align-items: center; justify-content: center;
+    padding: 40px 24px;
+    background: var(--bg); position: relative; z-index: 1;
+  }
+  .login-box {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 24px; padding: 36px 28px;
+    width: 100%; max-width: 360px;
+    display: flex; flex-direction: column; gap: 16px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+  .login-box .lock-icon {
+    width: 72px; height: 72px;
+    background: linear-gradient(135deg, var(--surface2), var(--surface3));
+    border: 1px solid var(--border2); border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px; margin: 0 auto;
+  }
+  .login-box h2 { font-size: 20px; font-weight: 700; }
+  .login-box p { color: var(--text2); font-size: 14px; }
+  .input-pw {
+    background: var(--bg); border: 1.5px solid var(--border2);
+    border-radius: 12px; padding: 14px 16px;
+    color: var(--text); font-family: inherit; font-size: 18px;
+    width: 100%; text-align: center; letter-spacing: 6px;
+    outline: none; transition: border .2s, box-shadow .2s;
+  }
+  .input-pw:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  .input-pw.error { border-color: var(--red); box-shadow: 0 0 0 3px rgba(239,68,68,0.15); }
+  .btn-login {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; border: none; border-radius: 12px;
+    padding: 15px; font-family: inherit; font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: opacity .2s;
+    box-shadow: 0 4px 16px var(--accent-glow);
+  }
+  .btn-login:hover { opacity: 0.9; }
+  .login-err { color: var(--red); font-size: 13px; min-height: 16px; font-weight: 500; }
+  .btn-back-sm {
+    background: none; border: none; color: var(--muted);
+    font-family: inherit; font-size: 13px; cursor: pointer;
+    padding: 8px; transition: color .2s;
+  }
+  .btn-back-sm:hover { color: var(--text); }
+
+  /* ── 관리자 대시보드 ── */
+  #screen-admin { background: var(--bg); position: relative; z-index: 1; }
+  .admin-body {
+    flex: 1; padding: 20px 20px 48px;
+    display: flex; flex-direction: column; gap: 18px;
+    max-width: 700px; width: 100%; margin: 0 auto;
+  }
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 14px; padding: 16px 12px; text-align: center;
+  }
+  .stat-card .s-val {
+    font-size: 30px; font-weight: 900; color: var(--accent);
+    line-height: 1; margin-bottom: 6px;
+  }
+  .stat-card .s-label { font-size: 11px; color: var(--muted); font-weight: 500; }
+  .stat-card.leader .s-val { color: var(--gold); }
+  .stat-card.leader { border-color: rgba(245,166,35,0.25); background: rgba(245,166,35,0.04); }
+
+  .panel-title {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .panel-title h3 { font-size: 14px; font-weight: 700; color: var(--text2); }
+  .panel-title .count-badge {
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 10px; padding: 2px 10px;
+    font-size: 12px; color: var(--muted);
+  }
+
+  .results-list { display: flex; flex-direction: column; gap: 8px; }
+  .result-row {
+    background: var(--surface); border: 1.5px solid var(--border2);
+    border-radius: 14px; padding: 13px 16px;
+    display: flex; align-items: center; gap: 12px;
+    transition: border-color .3s;
+  }
+  .result-row.rank1 { border-color: rgba(245,166,35,0.5); background: rgba(245,166,35,0.04); }
+  .result-row.rank2 { border-color: rgba(158,179,204,0.4); background: rgba(158,179,204,0.03); }
+  .result-row.rank3 { border-color: rgba(205,127,50,0.4); background: rgba(205,127,50,0.03); }
+  .rank-badge {
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 900; flex-shrink: 0;
+    background: var(--surface2); color: var(--muted);
+  }
+  .rank1 .rank-badge { background: var(--gold); color: #000; font-size: 18px; }
+  .rank2 .rank-badge { background: var(--silver); color: #000; font-size: 18px; }
+  .rank3 .rank-badge { background: var(--bronze); color: #fff; font-size: 18px; }
+  .result-team { font-size: 15px; font-weight: 700; min-width: 48px; }
+  .bar-wrap {
+    flex: 1; background: var(--bg);
+    border-radius: 6px; height: 8px; overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%; border-radius: 6px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width .7s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .rank1 .bar-fill { background: linear-gradient(90deg, var(--gold), #ffca5a); }
+  .result-count {
+    font-size: 16px; font-weight: 700; color: var(--accent);
+    min-width: 44px; text-align: right;
+  }
+  .rank1 .result-count { color: var(--gold); }
+
+  .voter-detail {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 14px; padding: 16px 18px;
+  }
+  .voter-detail h3 { font-size: 13px; color: var(--muted); margin-bottom: 12px; font-weight: 600; }
+  .voter-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .voter-chip {
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 22px; padding: 6px 14px; font-size: 13px;
+    display: flex; align-items: center; gap: 3px;
+  }
+  .voter-chip .from { color: var(--text2); font-weight: 600; }
+  .voter-chip .arrow { color: var(--accent); margin: 0 2px; font-size: 11px; }
+  .voter-chip .to { color: var(--text); }
+
+  .admin-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn-reset {
+    background: var(--red-bg); border: 1.5px solid rgba(239,68,68,0.4);
+    color: var(--red); border-radius: 12px;
+    padding: 14px; font-family: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: all .2s;
+  }
+  .btn-reset:hover { background: rgba(239,68,68,0.2); border-color: var(--red); }
+  .btn-logout {
+    background: var(--surface); border: 1.5px solid var(--border2);
+    color: var(--muted); border-radius: 12px;
+    padding: 14px; font-family: inherit; font-size: 14px;
+    cursor: pointer; transition: all .2s;
+  }
+  .btn-logout:hover { color: var(--text); border-color: var(--border); }
+
+  /* ── 라이브 배지 ── */
+  .live-indicator {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--green);
+  }
+  .live-dot {
+    width: 8px; height: 8px;
+    background: var(--green); border-radius: 50%;
+    animation: livePulse 1.8s ease-in-out infinite;
+  }
+  @keyframes livePulse {
+    0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+    50% { opacity: 0.7; transform: scale(1.2); box-shadow: 0 0 0 4px rgba(34,197,94,0); }
+  }
+
+  /* ── 토스트 ── */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--surface3); border: 1px solid var(--border2);
+    border-radius: 12px; padding: 12px 20px;
+    font-size: 14px; color: var(--text); white-space: nowrap;
+    z-index: 9999; transition: transform .3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── QR 버튼 ── */
+  .qr-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 10px; padding: 8px 14px;
+    color: var(--text2); font-size: 13px; font-family: inherit;
+    cursor: pointer; transition: all .2s;
+    text-decoration: none;
+  }
+  .qr-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── 반응형 ── */
+  @media (max-width: 380px) {
+    .team-select-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .team-btn { padding: 13px 4px; border-radius: 13px; }
+    .team-btn .num { font-size: 18px; }
+    .vote-grid { gap: 8px; }
+    .stats-row { gap: 8px; }
+    .stat-card .s-val { font-size: 24px; }
+  }
+
+  /* ── 확인 모달 ── */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    display: flex; align-items: flex-end; justify-content: center;
+    padding: 20px;
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal-box {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 24px; padding: 28px 24px;
+    width: 100%; max-width: 400px;
+    transform: translateY(40px); transition: transform .3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: center;
+  }
+  .modal-overlay.open .modal-box { transform: translateY(0); }
+  .modal-box h3 { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+  .modal-box p { color: var(--text2); font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
+  .modal-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .modal-cancel {
+    background: var(--surface2); border: 1px solid var(--border2);
+    color: var(--text2); border-radius: 12px; padding: 13px;
+    font-family: inherit; font-size: 14px; cursor: pointer; transition: all .2s;
+  }
+  .modal-cancel:hover { color: var(--text); }
+  .modal-confirm {
+    background: linear-gradient(135deg, var(--red), #c0392b);
+    border: none; color: #fff; border-radius: 12px; padding: 13px;
+    font-family: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: opacity .2s;
+  }
+  .modal-confirm:hover { opacity: 0.9; }
+</style>
+</head>
+<body>
+
+<!-- ━━ 로딩 ━━ -->
+<section id="screen-loading" class="screen active" role="status" aria-label="로딩 중">
+  <div class="loader-wrap">
+    <div class="spinner"></div>
+    <p>서버 연결 중…</p>
+  </div>
+</section>
+
+<!-- ━━ ① 홈 ━━ -->
+<section id="screen-home" class="screen" aria-label="내 조 선택">
+  <div class="home-hero">
+    <div class="home-icon">🗳️</div>
+    <h2>조별 투표</h2>
+    <p>신입사원 입문과정 · 우수 팀 선발</p>
+    <div class="sub-badge">본인 팀 제외 2팀 투표 · 조당 최대 6명</div>
+  </div>
+
+  <div class="select-section">
+    <p><strong>내 조</strong>를 먼저 선택하세요</p>
+    <div class="team-select-grid" id="home-grid" role="group" aria-label="조 선택"></div>
+  </div>
+
+  <button class="admin-link" onclick="goAdminLogin()" aria-label="운영자 대시보드">
+    🔒 운영자 대시보드
+  </button>
+</section>
+
+<!-- ━━ ② 투표 ━━ -->
+<section id="screen-vote" class="screen" aria-label="투표하기">
+  <header>
+    <h1>🗳️ 투표하기</h1>
+    <div class="badge">내 조: <strong id="my-team-badge">-</strong></div>
+  </header>
+  <div class="vote-body">
+    <div class="vote-info-card">
+      <strong>투표 안내</strong><br>
+      내 조를 제외한 팀 중 <span class="highlight">2팀</span>을 선택하세요.<br>
+      선택 후 제출하면 <strong>취소할 수 없습니다.</strong>
+    </div>
+    <div>
+      <p class="section-title">팀 선택</p>
+      <div class="vote-grid" id="vote-grid" role="group" aria-label="투표할 팀 선택"></div>
+    </div>
+    <div class="counter-bar">
+      <span class="counter-label">선택한 팀</span>
+      <div class="counter-dots">
+        <div class="dot" id="dot1" role="img" aria-label="첫번째 선택"></div>
+        <div class="dot" id="dot2" role="img" aria-label="두번째 선택"></div>
+      </div>
+      <div class="counter-num"><span id="sel-count">0</span> / 2</div>
+    </div>
+    <button class="btn-submit" id="btn-submit" disabled onclick="submitVote()">
+      ✅ 투표 제출하기
+    </button>
+    <button class="btn-back" onclick="goHome()">← 내 조 다시 선택</button>
+  </div>
+</section>
+
+<!-- ━━ ③ 완료 ━━ -->
+<section id="screen-done" class="screen" aria-label="투표 완료">
+  <div class="done-anim">
+    <div class="done-ring"></div>
+    <div class="done-icon">🎉</div>
+  </div>
+  <div>
+    <div class="done-title">투표 완료!</div>
+    <div class="done-sub">소중한 한 표가 반영되었습니다 😊</div>
+  </div>
+  <div class="voted-teams-wrap">
+    <p>선택한 팀</p>
+    <div class="voted-teams" id="voted-teams-display"></div>
+  </div>
+  <p style="font-size:12px;color:var(--muted);text-align:center;line-height:1.6;">
+    이 창을 닫아도 됩니다.<br>같은 기기에서 재투표는 불가합니다.
+  </p>
+</section>
+
+<!-- ━━ ④ 관리자 로그인 ━━ -->
+<section id="screen-admin-login" class="screen" aria-label="운영자 로그인">
+  <div class="login-box">
+    <div class="lock-icon">🔐</div>
+    <h2>운영자 로그인</h2>
+    <p>운영자 비밀번호를 입력하세요</p>
+    <input
+      class="input-pw" type="password" id="pw-input"
+      placeholder="••••" maxlength="8"
+      autocomplete="off" inputmode="numeric"
+      aria-label="비밀번호 입력"
+      onkeydown="if(event.key==='Enter') doLogin()"
+    >
+    <div class="login-err" id="login-err" role="alert" aria-live="polite"></div>
+    <button class="btn-login" onclick="doLogin()">로그인</button>
+    <button class="btn-back-sm" onclick="goHome()">← 돌아가기</button>
+  </div>
+</section>
+
+<!-- ━━ ⑤ 관리자 대시보드 ━━ -->
+<section id="screen-admin" class="screen" aria-label="투표 현황 대시보드">
+  <header>
+    <h1>📊 투표 현황</h1>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="live-indicator">
+        <div class="live-dot"></div>
+        <span>실시간</span>
+      </div>
+      <a href="qr.html" target="_blank" class="qr-btn">
+        <span>📱</span> QR
+      </a>
+    </div>
+  </header>
+  <div class="admin-body">
+
+    <!-- 통계 카드 -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="s-val" id="stat-voters">0</div>
+        <div class="s-label">투표 참여 인원</div>
+      </div>
+      <div class="stat-card">
+        <div class="s-val" id="stat-total">0</div>
+        <div class="s-label">총 득표 수</div>
+      </div>
+      <div class="stat-card leader">
+        <div class="s-val" id="stat-leader">-</div>
+        <div class="s-label">🏆 현재 1위</div>
+      </div>
+    </div>
+
+    <!-- 순위 목록 -->
+    <div>
+      <div class="panel-title" style="margin-bottom:10px;">
+        <h3>🏅 득표 순위</h3>
+        <div class="count-badge" id="rank-updated">갱신 대기</div>
+      </div>
+      <div class="results-list" id="results-list"></div>
+    </div>
+
+    <!-- 투표 내역 -->
+    <div class="voter-detail">
+      <h3>📋 투표 내역 (조별 개인 투표 → 선택 팀)</h3>
+      <div class="voter-chips" id="voter-chips">
+        <span style="color:var(--muted);font-size:13px">아직 투표가 없습니다</span>
+      </div>
+    </div>
+
+    <!-- 버튼 -->
+    <div class="admin-actions">
+      <button class="btn-reset" onclick="openResetModal()">🗑 투표 초기화</button>
+      <button class="btn-logout" onclick="goHome()">🚪 로그아웃</button>
+    </div>
+  </div>
+</section>
+
+<!-- ━━ 초기화 확인 모달 ━━ -->
+<div class="modal-overlay" id="reset-modal" role="dialog" aria-modal="true" aria-label="투표 초기화 확인">
+  <div class="modal-box">
+    <h3>⚠️ 투표 초기화</h3>
+    <p>
+      모든 투표 데이터가 <strong>완전히 삭제</strong>됩니다.<br>
+      이 작업은 되돌릴 수 없습니다.<br>정말 초기화하시겠습니까?
+    </p>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeResetModal()">취소</button>
+      <button class="modal-confirm" onclick="confirmReset()">초기화</button>
+    </div>
+  </div>
+</div>
+
+<!-- ━━ 토스트 ━━ -->
+<div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+<!-- ━━ Firebase SDK ━━ -->
+<script type="module">
+import { initializeApp }       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, get, onValue, remove, runTransaction }
+                                from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Firebase 설정
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+const firebaseConfig = {
+  apiKey:            "AIzaSyBwJLg-ejI3wHLyQfE3edSxt93H5digq-E",
+  authDomain:        "vote-8c235.firebaseapp.com",
+  databaseURL:       "https://vote-8c235-default-rtdb.firebaseio.com",
+  projectId:         "vote-8c235",
+  storageBucket:     "vote-8c235.firebasestorage.app",
+  messagingSenderId: "860484673468",
+  appId:             "1:860484673468:web:015101ee0a45bd944055b9"
+};
+
+const app      = initializeApp(firebaseConfig);
+const db       = getDatabase(app);
+const votesRef = ref(db, 'votes');
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   상수 & 상태
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+const TEAMS         = 8;
+const TEAM_CAPACITY = 6;
+const ADMIN_PW      = '2611';
+const DEVICE_ID_KEY = 'groupVoteDeviceIdV1';
+
+let selectedTeams = [];
+let myTeam        = null;
+let currentVotes  = {};
+let toastTimer    = null;
+
+function getDeviceId() {
+  try {
+    let id = localStorage.getItem(DEVICE_ID_KEY);
+    if (!id) {
+      id = crypto.randomUUID ? crypto.randomUUID() : `device-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      localStorage.setItem(DEVICE_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    return 'device-storage-unavailable';
+  }
+}
+
+function normalizeEntries(teamVotes) {
+  if (!teamVotes) return [];
+  if (Array.isArray(teamVotes)) {
+    return [{ voterId: 'legacy', choices: teamVotes.map(Number).filter(Boolean), createdAt: 0 }];
+  }
+  if (typeof teamVotes !== 'object') return [];
+  return Object.entries(teamVotes)
+    .map(([voterId, vote]) => {
+      if (Array.isArray(vote)) return { voterId, choices: vote.map(Number).filter(Boolean), createdAt: 0 };
+      return {
+        voterId,
+        choices: Array.isArray(vote?.choices) ? vote.choices.map(Number).filter(Boolean) : [],
+        createdAt: vote?.createdAt || 0
+      };
+    })
+    .filter(v => v.choices.length === 2);
+}
+
+function normalizeForStorage(teamVotes) {
+  if (!teamVotes) return {};
+  if (Array.isArray(teamVotes)) {
+    return { legacy: { choices: teamVotes.map(Number).filter(Boolean), createdAt: 0 } };
+  }
+  if (typeof teamVotes !== 'object') return {};
+  const normalized = {};
+  Object.entries(teamVotes).forEach(([voterId, vote]) => {
+    if (Array.isArray(vote)) {
+      normalized[voterId] = { choices: vote.map(Number).filter(Boolean), createdAt: 0 };
+    } else if (Array.isArray(vote?.choices)) {
+      normalized[voterId] = vote;
+    }
+  });
+  return normalized;
+}
+
+function getTeamCount(team, votes = currentVotes) {
+  return normalizeEntries(votes?.[team]).length;
+}
+
+function isTeamFull(team, votes = currentVotes) {
+  return getTeamCount(team, votes) >= TEAM_CAPACITY;
+}
+
+function findDeviceVote(votes = currentVotes, deviceId = getDeviceId()) {
+  for (let team = 1; team <= TEAMS; team++) {
+    const teamVotes = votes?.[team];
+    if (teamVotes && !Array.isArray(teamVotes) && Object.prototype.hasOwnProperty.call(teamVotes, deviceId)) {
+      const entry = normalizeEntries({ [deviceId]: teamVotes[deviceId] })[0];
+      return { team, entry };
+    }
+  }
+  return null;
+}
+
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   유틸
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+
+function showToast(msg, duration = 2200) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+}
+
+function fmtTime() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')} 갱신`;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Firebase 실시간 리스너
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+onValue(votesRef, (snapshot) => {
+  currentVotes = snapshot.val() || {};
+  buildHomeGrid();
+  if (document.getElementById('screen-admin').classList.contains('active')) {
+    renderAdmin();
+  }
+});
+
+/* 최초 로딩 */
+get(votesRef)
+  .then(() => show('screen-home'))
+  .catch(() => show('screen-home'));
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   홈 화면
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+function goHome() {
+  myTeam = null;
+  selectedTeams = [];
+  show('screen-home');
+}
+window.goHome = goHome;
+
+function goAdminLogin() {
+  show('screen-admin-login');
+  const inp = document.getElementById('pw-input');
+  inp.value = '';
+  inp.classList.remove('error');
+  document.getElementById('login-err').textContent = '';
+  setTimeout(() => inp.focus(), 300);
+}
+window.goAdminLogin = goAdminLogin;
+
+function buildHomeGrid() {
+  const grid = document.getElementById('home-grid');
+  const deviceVote = findDeviceVote();
+  grid.innerHTML = '';
+  for (let i = 1; i <= TEAMS; i++) {
+    const count = getTeamCount(i);
+    const done = count >= TEAM_CAPACITY;
+    const locked = Boolean(deviceVote);
+    const btn  = document.createElement('button');
+    btn.className   = 'team-btn' + (done ? ' voted' : '');
+    btn.disabled    = done || locked;
+    btn.setAttribute('aria-label', `${i}조 선택, 현재 ${count}명 참여${done ? ' - 투표 마감' : ''}`);
+    btn.innerHTML   = `<span class="num">${i}조</span><span class="label">${done ? '✅ 완료' : locked ? '투표 완료됨' : '선택'}</span><span class="label">${count} / ${TEAM_CAPACITY}</span>`;
+    if (!done && !locked) btn.onclick = () => enterVote(i);
+    grid.appendChild(btn);
+  }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   투표 화면
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+function enterVote(team) {
+  if (findDeviceVote()) {
+    showToast('⚠️ 이 기기에서는 이미 투표를 완료했습니다.');
+    buildHomeGrid();
+    return;
+  }
+  if (isTeamFull(team)) {
+    showToast(`⚠️ ${team}조는 투표 가능 인원이 마감되었습니다.`);
+    buildHomeGrid();
+    return;
+  }
+  myTeam = team;
+  selectedTeams = [];
+  document.getElementById('my-team-badge').textContent = `${team}조`;
+  buildVoteGrid();
+  updateCounter();
+  show('screen-vote');
+}
+
+function buildVoteGrid() {
+  const grid = document.getElementById('vote-grid');
+  grid.innerHTML = '';
+  for (let i = 1; i <= TEAMS; i++) {
+    const isMe = (i === myTeam);
+    const card = document.createElement('div');
+    card.className = 'vote-card' + (isMe ? ' my-team' : '');
+    card.id = `vcard-${i}`;
+    card.setAttribute('role', isMe ? 'img' : 'button');
+    card.setAttribute('aria-label', isMe ? `${i}조 (내 조)` : `${i}조 선택`);
+    if (!isMe) {
+      card.setAttribute('tabindex', '0');
+      card.onclick = () => toggleTeam(i);
+      card.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTeam(i); } };
+    }
+    card.innerHTML = `
+      <div class="check-icon" id="check-${i}" aria-hidden="true">✓</div>
+      <div class="v-num">${i}조</div>
+      <div class="v-label" id="vlabel-${i}">${isMe ? '🏠 내 조' : '탭하여 선택'}</div>
+    `;
+    grid.appendChild(card);
+  }
+}
+
+function toggleTeam(t) {
+  const idx = selectedTeams.indexOf(t);
+  if (idx !== -1) {
+    selectedTeams.splice(idx, 1);
+  } else {
+    if (selectedTeams.length >= 2) {
+      showToast('⚠️ 최대 2팀만 선택할 수 있습니다');
+      return;
+    }
+    selectedTeams.push(t);
+  }
+
+  for (let i = 1; i <= TEAMS; i++) {
+    if (i === myTeam) continue;
+    const card  = document.getElementById(`vcard-${i}`);
+    const label = document.getElementById(`vlabel-${i}`);
+    const sel   = selectedTeams.includes(i);
+    const full  = selectedTeams.length >= 2 && !sel;
+    card.className  = 'vote-card' + (sel ? ' selected' : '') + (full ? ' disabled' : '');
+    card.setAttribute('aria-pressed', sel ? 'true' : 'false');
+    label.textContent = sel ? '선택됨 ✓' : (full ? '선택 불가' : '탭하여 선택');
+  }
+  updateCounter();
+}
+
+function updateCounter() {
+  const n = selectedTeams.length;
+  document.getElementById('sel-count').textContent = n;
+  document.getElementById('dot1').className = 'dot' + (n >= 1 ? ' filled' : '');
+  document.getElementById('dot2').className = 'dot' + (n >= 2 ? ' filled' : '');
+  document.getElementById('btn-submit').disabled = n < 2;
+}
+
+async function submitVote() {
+  if (selectedTeams.length !== 2) return;
+
+  const btn = document.getElementById('btn-submit');
+  const originalText = btn.textContent;
+  const deviceId = getDeviceId();
+  let status = 'unknown';
+  btn.disabled = true;
+  btn.textContent = '제출 중';
+
+  try {
+    await runTransaction(votesRef, (allVotes) => {
+      allVotes = allVotes || {};
+      if (findDeviceVote(allVotes, deviceId)) {
+        status = 'duplicate';
+        return;
+      }
+      if (isTeamFull(myTeam, allVotes)) {
+        status = 'full';
+        return;
+      }
+
+      const teamVotes = normalizeForStorage(allVotes[myTeam]);
+      teamVotes[deviceId] = {
+        from: myTeam,
+        choices: [...selectedTeams],
+        createdAt: Date.now()
+      };
+      allVotes[myTeam] = teamVotes;
+      status = 'ok';
+      return allVotes;
+    }, { applyLocally: false });
+
+    if (status === 'duplicate') {
+      showToast('⚠️ 이 기기에서는 이미 투표를 완료했습니다.');
+      goHome();
+      return;
+    }
+    if (status === 'full') {
+      showToast(`⚠️ ${myTeam}조는 투표 가능 인원이 마감되었습니다.`);
+      goHome();
+      return;
+    }
+    if (status !== 'ok') throw new Error('transaction-not-committed');
+
+    const disp = document.getElementById('voted-teams-display');
+    disp.innerHTML = selectedTeams.map(t => `<div class="voted-chip">${t}조</div>`).join('');
+    show('screen-done');
+  } catch (e) {
+    btn.disabled  = false;
+    btn.textContent = originalText;
+    showToast('⚠️ 오류가 발생했습니다. 다시 시도해 주세요.');
+    console.error(e);
+  }
+}
+window.submitVote = submitVote;
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   관리자 로그인
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+function doLogin() {
+  const inp = document.getElementById('pw-input');
+  const err = document.getElementById('login-err');
+  if (inp.value === ADMIN_PW) {
+    inp.classList.remove('error');
+    err.textContent = '';
+    show('screen-admin');
+    renderAdmin();
+  } else {
+    inp.classList.add('error');
+    err.textContent = '⚠️ 비밀번호가 올바르지 않습니다.';
+    inp.value = '';
+    inp.focus();
+    /* 흔들기 효과 */
+    inp.animate([
+      { transform: 'translateX(-4px)' }, { transform: 'translateX(4px)' },
+      { transform: 'translateX(-4px)' }, { transform: 'translateX(0)' }
+    ], { duration: 300, iterations: 1 });
+  }
+}
+window.doLogin = doLogin;
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   관리자 대시보드
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+function renderAdmin() {
+  const tally = {};
+  for (let i = 1; i <= TEAMS; i++) tally[i] = 0;
+  let totalVoters = 0;
+  const logs = [];
+
+  for (let team = 1; team <= TEAMS; team++) {
+    const entries = normalizeEntries(currentVotes[team]);
+    entries.forEach((entry, idx) => {
+      totalVoters++;
+      entry.choices.forEach(t => {
+        tally[t] = (tally[t] || 0) + 1;
+      });
+      logs.push({ from: team, voterNo: idx + 1, choices: entry.choices, createdAt: entry.createdAt });
+    });
+  }
+
+  const total  = Object.values(tally).reduce((a, b) => a + b, 0);
+  const sorted = Object.entries(tally).sort((a, b) => b[1] - a[1] || Number(a[0]) - Number(b[0]));
+  const maxVal = sorted[0] ? Math.max(sorted[0][1], 1) : 1;
+
+  document.getElementById('stat-voters').textContent = `${totalVoters} / ${TEAMS * TEAM_CAPACITY}`;
+  document.getElementById('stat-total').textContent  = total;
+  const leader = sorted.find(([, v]) => v > 0);
+  document.getElementById('stat-leader').textContent = leader ? `${leader[0]}조` : '-';
+  document.getElementById('rank-updated').textContent = fmtTime();
+
+  const list = document.getElementById('results-list');
+  list.innerHTML = '';
+  sorted.forEach(([team, count], idx) => {
+    const rankClass = idx === 0 ? 'rank1' : idx === 1 ? 'rank2' : idx === 2 ? 'rank3' : '';
+    const rankLabel = idx === 0 ? '1' : idx === 1 ? '2' : idx === 2 ? '3' : idx + 1;
+    const pct       = Math.round(count / maxVal * 100);
+    const row = document.createElement('div');
+    row.className = `result-row ${rankClass}`;
+    row.innerHTML = `
+      <div class="rank-badge">${rankLabel}</div>
+      <div class="result-team">${team}조</div>
+      <div class="bar-wrap">
+        <div class="bar-fill" style="width:0%" data-pct="${pct}"></div>
+      </div>
+      <div class="result-count">${count}표</div>
+    `;
+    list.appendChild(row);
+  });
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.bar-fill').forEach(el => {
+      el.style.width = el.dataset.pct + '%';
+    });
+  });
+
+  const chips = document.getElementById('voter-chips');
+  if (logs.length === 0) {
+    chips.innerHTML = '<span style="color:var(--muted);font-size:13px">아직 투표가 없습니다</span>';
+  } else {
+    chips.innerHTML = logs
+      .sort((a, b) => a.from - b.from || a.voterNo - b.voterNo)
+      .map(log => `
+        <div class="voter-chip">
+          <span class="from">${log.from}조 #${log.voterNo}</span>
+          <span class="arrow">→</span>
+          <span class="to">${log.choices.map(t => `${t}조`).join(', ')}</span>
+        </div>
+      `).join('');
+  }
+}
+
+function openResetModal() {
+  document.getElementById('reset-modal').classList.add('open');
+}
+window.openResetModal = openResetModal;
+
+function closeResetModal() {
+  document.getElementById('reset-modal').classList.remove('open');
+}
+window.closeResetModal = closeResetModal;
+
+async function confirmReset() {
+  closeResetModal();
+  try {
+    await remove(votesRef);
+    currentVotes = {};
+    buildHomeGrid();
+    renderAdmin();
+    showToast('✅ 투표가 초기화되었습니다.');
+  } catch (e) {
+    showToast('❌ 초기화 중 오류가 발생했습니다.');
+    console.error(e);
+  }
+}
+window.confirmReset = confirmReset;
+
+/* 모달 배경 클릭 시 닫기 */
+document.getElementById('reset-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeResetModal();
+});
+</script>
+</body>
+</html>
